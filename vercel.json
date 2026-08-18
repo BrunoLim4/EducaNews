@@ -1,4 +1,0 @@
-{
-  "buildCommand": "cd diario-educacao-frontend && npm run build",
-  "outputDirectory": "diario-educacao-frontend/dist"
-}
