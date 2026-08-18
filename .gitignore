@@ -1,0 +1,33 @@
+# Node
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Ambiente
+.env
+.env.*
+!.env.example
+
+# Uploads
+uploads/
+*.mp4
+*.webm
+*.mov
+*.avi
+
+# Build
+dist/
+build/
+
+# Logs
+logs/
+*.log
+
+# Sistema
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/

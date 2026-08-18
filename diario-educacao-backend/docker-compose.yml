@@ -1,0 +1,53 @@
+
+services:
+
+  postgres:
+    image: postgres:16
+    container_name: diario-educacao-postgres
+    restart: unless-stopped
+
+    environment:
+      POSTGRES_DB: diario_educacao
+      POSTGRES_USER: diario_admin
+      POSTGRES_PASSWORD: diario_senha_2026
+
+    ports:
+      - "5432:5432"
+
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U diario_admin -d diario_educacao"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  backend:
+    build: .
+    container_name: diario-educacao-backend
+    restart: unless-stopped
+
+    ports:
+      - "3000:3000"
+
+    volumes:
+      - ./uploads:/app/uploads
+
+    environment:
+      PORT: 3000
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: diario_educacao
+      DB_USER: diario_admin
+      DB_PASSWORD: diario_senha_2026
+      JWT_SECRET: diario_educacao_maetinga_chave_secreta_2026
+
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+volumes:
+
+  postgres_data:
+
