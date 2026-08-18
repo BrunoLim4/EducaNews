@@ -1,8 +1,11 @@
 {
+  "buildCommand": "cd diario-educacao-frontend && npm run build",
+  "outputDirectory": "diario-educacao-frontend/dist",
+  "installCommand": "cd diario-educacao-frontend && npm install",
   "rewrites": [
     {
       "source": "/(.*)",
-      "destination": "/diario-educacao-frontend/index.html"
+      "destination": "/index.html"
     }
   ]
 }
