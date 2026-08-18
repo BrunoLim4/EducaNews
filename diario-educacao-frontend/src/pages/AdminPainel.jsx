@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from "react";
 
 import {
@@ -47,7 +46,6 @@ function AdminPainel() {
 
     const token = localStorage.getItem("token");
 
-
     useEffect(() => {
 
         if (!token) {
@@ -58,7 +56,6 @@ function AdminPainel() {
         carregarNoticias();
 
     }, []);
-
 
     async function carregarNoticias() {
 
@@ -81,7 +78,6 @@ function AdminPainel() {
 
     }
 
-
     function sair() {
 
         localStorage.removeItem("token");
@@ -90,7 +86,6 @@ function AdminPainel() {
         navigate("/secretaria");
 
     }
-
 
     function selecionarImagem(e) {
 
@@ -122,7 +117,6 @@ function AdminPainel() {
 
     }
 
-
     function selecionarVideo(e) {
 
         const arquivo = e.target.files[0];
@@ -153,7 +147,6 @@ function AdminPainel() {
 
     }
 
-
     function removerImagem() {
 
         setImagem(null);
@@ -168,7 +161,6 @@ function AdminPainel() {
 
     }
 
-
     function removerVideo() {
 
         setVideo(null);
@@ -182,7 +174,6 @@ function AdminPainel() {
         }
 
     }
-
 
     function limparFormulario() {
 
@@ -216,7 +207,6 @@ function AdminPainel() {
 
     }
 
-
     function iniciarEdicao(noticia) {
 
         setEditando(noticia);
@@ -234,9 +224,7 @@ function AdminPainel() {
 
         if (noticia.imagem) {
 
-            setPreviewImagem(
-                `http://localhost:3000${noticia.imagem}`
-            );
+            setPreviewImagem(mediaUrl(noticia.imagem));
 
         } else {
 
@@ -246,9 +234,7 @@ function AdminPainel() {
 
         if (noticia.video) {
 
-            setPreviewVideo(
-                `http://localhost:3000${noticia.video}`
-            );
+            setPreviewVideo(mediaUrl(noticia.video));
 
         } else {
 
@@ -265,7 +251,6 @@ function AdminPainel() {
         });
 
     }
-
 
     async function salvarNoticia(e) {
 
@@ -407,7 +392,6 @@ function AdminPainel() {
 
     }
 
-
     async function excluirNoticia(noticia) {
 
         const confirmar =
@@ -467,7 +451,6 @@ function AdminPainel() {
 
     }
 
-
     function formatarData(data) {
 
         if (!data) {
@@ -486,17 +469,23 @@ function AdminPainel() {
 
     }
 
-
+    // ==========================================
+    // NOVA FUNÇÃO MEDIAURL COM SUPORTE CLOUDINARY
+    // ==========================================
     function mediaUrl(caminho) {
-
         if (!caminho) {
             return null;
         }
 
-        return `http://localhost:3000${caminho}`;
+        // Se a string já começa com http (como as URLs do Cloudinary),
+        // retorna o link diretamente sem alterar nada.
+        if (caminho.startsWith("http")) {
+            return caminho;
+        }
 
+        const baseUrl = import.meta.env.VITE_BASE_URL || "http://localhost:3000";
+        return `${baseUrl}${caminho}`;
     }
-
 
     return (
 
@@ -1222,4 +1211,3 @@ function AdminPainel() {
 }
 
 export default AdminPainel;
-

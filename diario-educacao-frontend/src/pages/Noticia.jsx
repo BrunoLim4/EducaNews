@@ -9,6 +9,9 @@ import {
     useParams
 } from "react-router-dom";
 
+// Axios configurado importado aqui
+import api from "../services/api";
+
 function Noticia() {
 
     const { id } = useParams();
@@ -27,66 +30,15 @@ function Noticia() {
                 setCarregando(true);
                 setErro(null);
 
-                const url =
-                    `http://localhost:3000/api/noticias/${id}`;
+                console.log("Buscando notícia ID:", id);
 
-                console.log("Buscando notícia:", url);
+                const resposta = await api.get(`/noticias/${id}`);
 
-                const resposta = await fetch(url);
-
-                console.log(
-                    "Status:",
-                    resposta.status
-                );
-
-                const texto =
-                    await resposta.text();
-
-                console.log(
-                    "Resposta:",
-                    texto
-                );
-
-                if (!resposta.ok) {
-
-                    let mensagem =
-                        "Erro ao buscar notícia.";
-
-                    try {
-
-                        const erroApi =
-                            JSON.parse(texto);
-
-                        mensagem =
-                            erroApi.mensagem ||
-                            mensagem;
-
-                    } catch {
-
-                        if (texto) {
-                            mensagem = texto;
-                        }
-
-                    }
-
-                    throw new Error(mensagem);
-
+                if (!resposta.data.noticia) {
+                    throw new Error("Notícia não encontrada.");
                 }
 
-                const dados =
-                    JSON.parse(texto);
-
-                if (!dados.noticia) {
-
-                    throw new Error(
-                        "Notícia não encontrada."
-                    );
-
-                }
-
-                setNoticia(
-                    dados.noticia
-                );
+                setNoticia(resposta.data.noticia);
 
             } catch (error) {
 
@@ -96,7 +48,9 @@ function Noticia() {
                 );
 
                 setErro(
-                    error.message
+                    error.response?.data?.mensagem ||
+                    error.message ||
+                    "Erro ao buscar notícia."
                 );
 
             } finally {
@@ -110,6 +64,26 @@ function Noticia() {
         buscarNoticia();
 
     }, [id]);
+
+
+    // ==========================================
+    // NOVA FUNÇÃO MEDIAURL COM SUPORTE CLOUDINARY
+    // ==========================================
+    function mediaUrl(caminho) {
+
+        if (!caminho) {
+            return null;
+        }
+
+        // Se a string já começa com http (URL do Cloudinary), retorna o link diretamente.
+        if (caminho.startsWith("http")) {
+            return caminho;
+        }
+
+        const baseUrl = import.meta.env.VITE_BASE_URL || "http://localhost:3000";
+        return `${baseUrl}${caminho}`;
+
+    }
 
 
     // ===============================
@@ -164,20 +138,14 @@ function Noticia() {
     // URL DA IMAGEM
     // ===============================
 
-    const imagemUrl =
-        noticia.imagem
-            ? `http://localhost:3000${noticia.imagem}`
-            : null;
+    const imagemUrl = noticia.imagem ? mediaUrl(noticia.imagem) : null;
 
 
     // ===============================
     // URL DO VÍDEO
     // ===============================
 
-    const videoUrl =
-        noticia.video
-            ? `http://localhost:3000${encodeURI(noticia.video)}`
-            : null;
+    const videoUrl = noticia.video ? mediaUrl(encodeURI(noticia.video)) : null;
 
 
     // ===============================

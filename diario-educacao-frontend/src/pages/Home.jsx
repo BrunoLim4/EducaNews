@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from "react";
 import logo from "../assets/Maetinga horizontalai.png";
 import {
@@ -15,6 +14,7 @@ import {
 
 import { useNavigate } from "react-router-dom";
 import api from "../services/api";
+
 function Home() {
 
     const navigate = useNavigate();
@@ -78,14 +78,22 @@ function Home() {
 
     }
 
-
+    // ==========================================
+    // NOVA FUNÇÃO MEDIAURL COM SUPORTE CLOUDINARY
+    // ==========================================
     function mediaUrl(caminho) {
 
         if (!caminho) {
             return null;
         }
 
-        return `http://localhost:3000${caminho}`;
+        // Se a string já começa com http (URL do Cloudinary), retorna o link diretamente.
+        if (caminho.startsWith("http")) {
+            return caminho;
+        }
+
+        const baseUrl = import.meta.env.VITE_BASE_URL || "http://localhost:3000";
+        return `${baseUrl}${caminho}`;
 
     }
 
@@ -571,15 +579,13 @@ function Home() {
                 FOOTER
             ====================================================== */}
 
-                        <footer className="footer">
+            <footer className="footer">
 
                 <div className="footer-container">
 
                     <div className="footer-main">
 
                         <div className="footer-brand">
-
-                         
 
                             <div>
 
@@ -679,4 +685,3 @@ function Home() {
 }
 
 export default Home;
-
