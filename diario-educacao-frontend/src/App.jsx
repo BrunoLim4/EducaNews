@@ -17,7 +17,6 @@ function App() {
 
             <Routes>
 
-                {/* SITE PÚBLICO */}
 
                 <Route
                     path="/"
