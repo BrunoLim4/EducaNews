@@ -150,7 +150,33 @@ app.get("/api/teste-banco", async (req, res) => {
 // ===============================
 
 const PORT = process.env.PORT || 3000;
+app.get("/api/criar-tabela-noticias", async (req, res) => {
+    try {
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS noticias (
+                id SERIAL PRIMARY KEY,
+                titulo VARCHAR(255) NOT NULL,
+                conteudo TEXT NOT NULL,
+                imagem TEXT,
+                video TEXT,
+                criado_em TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        `);
 
+        res.json({
+            sucesso: true,
+            mensagem: "Tabela noticias criada com sucesso."
+        });
+
+    } catch (erro) {
+        console.error("Erro ao criar tabela noticias:", erro);
+
+        res.status(500).json({
+            sucesso: false,
+            erro: erro.message
+        });
+    }
+});
 app.listen(PORT, "0.0.0.0", () => {
     console.log(`🚀 Servidor rodando na porta ${PORT}`);
 });
