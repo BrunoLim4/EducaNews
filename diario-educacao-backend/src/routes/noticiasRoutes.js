@@ -129,6 +129,20 @@ router.get("/:id", async (req, res) => {
 
 
 // =========================================================
+// FUNÇÃO AUXILIAR (Extrair ID do Cloudinary)
+// =========================================================
+// Foi movida para cá para poder ser usada na edição e na exclusão
+
+const extrairPublicId = (url) => {
+    const partes = url.split("/");
+    const arquivoComExtensao = partes.pop(); // arquivo.jpg
+    const pasta = partes.pop(); // educanews
+    const nomeArquivo = arquivoComExtensao.split(".")[0]; // arquivo
+    return `${pasta}/${nomeArquivo}`;
+};
+
+
+// =========================================================
 // CRIAR NOTÍCIA
 // =========================================================
 
@@ -278,20 +292,20 @@ router.put(
             const { id } = req.params;
             const {
                 titulo,
-                conteudo
+                conteudo,
+                removerImagem, // Flag do Front-end para remover foto
+                removerVideo   // Flag do Front-end para remover vídeo
             } = req.body;
 
             if (!titulo || !titulo.trim()) {
                 return res.status(400).json({
-                    mensagem:
-                        "O título é obrigatório."
+                    mensagem: "O título é obrigatório."
                 });
             }
 
             if (!conteudo || !conteudo.trim()) {
                 return res.status(400).json({
-                    mensagem:
-                        "O conteúdo é obrigatório."
+                    mensagem: "O conteúdo é obrigatório."
                 });
             }
 
@@ -299,22 +313,20 @@ router.put(
             // BUSCAR NOTÍCIA ATUAL
             // -----------------------------------------
 
-            const atual =
-                await pool.query(
-                    `
-                    SELECT
-                        imagem,
-                        video
-                    FROM noticias
-                    WHERE id = $1
-                    `,
-                    [id]
-                );
+            const atual = await pool.query(
+                `
+                SELECT
+                    imagem,
+                    video
+                FROM noticias
+                WHERE id = $1
+                `,
+                [id]
+            );
 
             if (atual.rows.length === 0) {
                 return res.status(404).json({
-                    mensagem:
-                        "Notícia não encontrada."
+                    mensagem: "Notícia não encontrada."
                 });
             }
 
@@ -322,76 +334,89 @@ router.put(
             let video = atual.rows[0].video;
 
             // -----------------------------------------
-            // NOVOS ARQUIVOS (Se enviados)
+            // LÓGICA DE ATUALIZAÇÃO DA IMAGEM
             // -----------------------------------------
+            
+            // Se o usuário mandou apagar OU enviou uma imagem nova, excluímos a antiga do Cloudinary
+            if (removerImagem === "true" || (req.files && req.files.imagem)) {
+                if (imagem && imagem.includes("cloudinary")) {
+                    try {
+                        const publicId = extrairPublicId(imagem);
+                        await cloudinary.uploader.destroy(publicId, { resource_type: "image" });
+                    } catch (err) {
+                        console.error("Erro ao apagar imagem antiga do Cloudinary:", err);
+                    }
+                }
+                imagem = null; // Reseta no banco
+            }
 
-            if (
-                req.files &&
-                req.files.imagem &&
-                req.files.imagem.length > 0
-            ) {
+            // Se enviou uma nova, atribui a nova URL
+            if (req.files && req.files.imagem && req.files.imagem.length > 0) {
                 imagem = req.files.imagem[0].path;
             }
 
-            if (
-                req.files &&
-                req.files.video &&
-                req.files.video.length > 0
-            ) {
+            // -----------------------------------------
+            // LÓGICA DE ATUALIZAÇÃO DO VÍDEO
+            // -----------------------------------------
+            
+            // Se o usuário mandou apagar OU enviou um vídeo novo, excluímos o antigo do Cloudinary
+            if (removerVideo === "true" || (req.files && req.files.video)) {
+                if (video && video.includes("cloudinary")) {
+                    try {
+                        const publicId = extrairPublicId(video);
+                        await cloudinary.uploader.destroy(publicId, { resource_type: "video" });
+                    } catch (err) {
+                        console.error("Erro ao apagar vídeo antigo do Cloudinary:", err);
+                    }
+                }
+                video = null; // Reseta no banco
+            }
+
+            // Se enviou um novo, atribui a nova URL
+            if (req.files && req.files.video && req.files.video.length > 0) {
                 video = req.files.video[0].path;
             }
 
             // -----------------------------------------
-            // ATUALIZAR
+            // ATUALIZAR BANCO DE DADOS
             // -----------------------------------------
 
-            const resultado =
-                await pool.query(
-                    `
-                    UPDATE noticias
-                    SET
-                        titulo = $1,
-                        conteudo = $2,
-                        imagem = $3,
-                        video = $4
-                    WHERE id = $5
-                    RETURNING
-                        id,
-                        titulo,
-                        conteudo,
-                        imagem,
-                        video,
-                        criado_em
-                    `,
-                    [
-                        titulo.trim(),
-                        conteudo.trim(),
-                        imagem,
-                        video,
-                        id
-                    ]
-                );
+            const resultado = await pool.query(
+                `
+                UPDATE noticias
+                SET
+                    titulo = $1,
+                    conteudo = $2,
+                    imagem = $3,
+                    video = $4
+                WHERE id = $5
+                RETURNING
+                    id,
+                    titulo,
+                    conteudo,
+                    imagem,
+                    video,
+                    criado_em
+                `,
+                [
+                    titulo.trim(),
+                    conteudo.trim(),
+                    imagem,
+                    video,
+                    id
+                ]
+            );
 
             res.json({
-                mensagem:
-                    "Notícia atualizada com sucesso.",
-                noticia:
-                    resultado.rows[0]
+                mensagem: "Notícia atualizada com sucesso.",
+                noticia: resultado.rows[0]
             });
 
         } catch (erro) {
-            console.error(
-                "Erro ao atualizar notícia:",
-                erro
-            );
-
+            console.error("Erro ao atualizar notícia:", erro);
             res.status(500).json({
-                mensagem:
-                    "Erro ao atualizar notícia.",
-                erro:
-                    process.env.NODE_ENV === "development"
-                        ? erro.message
-                        : undefined
+                mensagem: "Erro ao atualizar notícia.",
+                erro: process.env.NODE_ENV === "development" ? erro.message : undefined
             });
         }
     }
@@ -401,15 +426,6 @@ router.put(
 // =========================================================
 // EXCLUIR NOTÍCIA E MÍDIAS DO CLOUDINARY
 // =========================================================
-
-// Função para extrair o ID Público da imagem direto da URL gerada pelo Cloudinary
-const extrairPublicId = (url) => {
-    const partes = url.split("/");
-    const arquivoComExtensao = partes.pop(); // arquivo.jpg
-    const pasta = partes.pop(); // educanews
-    const nomeArquivo = arquivoComExtensao.split(".")[0]; // arquivo
-    return `${pasta}/${nomeArquivo}`;
-};
 
 router.delete(
     "/:id",
@@ -422,22 +438,20 @@ router.delete(
             // BUSCAR ARQUIVOS NO BANCO
             // -----------------------------------------
 
-            const noticia =
-                await pool.query(
-                    `
-                    SELECT
-                        imagem,
-                        video
-                    FROM noticias
-                    WHERE id = $1
-                    `,
-                    [id]
-                );
+            const noticia = await pool.query(
+                `
+                SELECT
+                    imagem,
+                    video
+                FROM noticias
+                WHERE id = $1
+                `,
+                [id]
+            );
 
             if (noticia.rows.length === 0) {
                 return res.status(404).json({
-                    mensagem:
-                        "Notícia não encontrada."
+                    mensagem: "Notícia não encontrada."
                 });
             }
 
@@ -446,14 +460,17 @@ router.delete(
                 video
             } = noticia.rows[0];
 
-
             // -----------------------------------------
             // EXCLUIR IMAGEM DO CLOUDINARY
             // -----------------------------------------
 
             if (imagem && imagem.includes("cloudinary")) {
-                const publicId = extrairPublicId(imagem);
-                await cloudinary.uploader.destroy(publicId, { resource_type: "image" });
+                try {
+                    const publicId = extrairPublicId(imagem);
+                    await cloudinary.uploader.destroy(publicId, { resource_type: "image" });
+                } catch (err) {
+                     console.error("Erro ao apagar imagem do Cloudinary na exclusão:", err);
+                }
             }
 
             // -----------------------------------------
@@ -461,8 +478,12 @@ router.delete(
             // -----------------------------------------
 
             if (video && video.includes("cloudinary")) {
-                const publicId = extrairPublicId(video);
-                await cloudinary.uploader.destroy(publicId, { resource_type: "video" });
+                try {
+                    const publicId = extrairPublicId(video);
+                    await cloudinary.uploader.destroy(publicId, { resource_type: "video" });
+                } catch (err) {
+                    console.error("Erro ao apagar vídeo do Cloudinary na exclusão:", err);
+                }
             }
 
             // -----------------------------------------
@@ -478,19 +499,13 @@ router.delete(
             );
 
             res.json({
-                mensagem:
-                    "Notícia excluída com sucesso."
+                mensagem: "Notícia excluída com sucesso."
             });
 
         } catch (erro) {
-            console.error(
-                "Erro ao excluir notícia:",
-                erro
-            );
-
+            console.error("Erro ao excluir notícia:", erro);
             res.status(500).json({
-                mensagem:
-                    "Erro ao excluir notícia."
+                mensagem: "Erro ao excluir notícia."
             });
         }
     }
@@ -503,40 +518,27 @@ router.delete(
 
 router.use(
     (erro, req, res, next) => {
-        console.error(
-            "Erro no upload:",
-            erro
-        );
+        console.error("Erro no upload:", erro);
 
-        if (
-            erro instanceof multer.MulterError
-        ) {
-            if (
-                erro.code === "LIMIT_FILE_SIZE"
-            ) {
+        if (erro instanceof multer.MulterError) {
+            if (erro.code === "LIMIT_FILE_SIZE") {
                 return res.status(400).json({
-                    mensagem:
-                        "O arquivo é muito grande. O limite é de 500 MB."
+                    mensagem: "O arquivo é muito grande. O limite é de 500 MB."
                 });
             }
-
             return res.status(400).json({
-                mensagem:
-                    `Erro no upload: ${erro.message}`
+                mensagem: `Erro no upload: ${erro.message}`
             });
         }
 
         if (erro) {
             return res.status(400).json({
-                mensagem:
-                    erro.message ||
-                    "Erro ao enviar arquivo."
+                mensagem: erro.message || "Erro ao enviar arquivo."
             });
         }
 
         next();
     }
 );
-
 
 module.exports = router;
